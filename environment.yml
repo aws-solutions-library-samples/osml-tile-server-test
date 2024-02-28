@@ -1,0 +1,11 @@
+name: osml_tile_server_test
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - requests
+  - boto3
+  - conda-forge::proj=9.3.0
+  - pip
+  - pip:
+    - locust
