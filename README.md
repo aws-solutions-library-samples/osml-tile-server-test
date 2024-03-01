@@ -47,18 +47,27 @@ version of the API documents.
 tox -e docs
 ```
 
-### Running Test in Docker
-Arguments can be passed in to docker run to set the endpoint, test type, source bucket, and source image.
+### Running Tests
+
+#### In AWS Lambda
+The Tile Server Test package is designed to be deployed as an AWS Lambda Container.
+The [osml-cdk-constructs](https://github.com/aws-solutions-library-samples/osml-cdk-constructs)
+package contains the required resources, and example stacks can be found in the associated
+[AWS Guidance Repository](https://github.com/aws-solutions-library-samples/guidance-for-processing-overhead-imagery-on-aws).
+When deployed in this manner, the Tile Server integration tests can be initiated by running ```npm run integ:tile-server```
+from the guidance repository.
+
+#### In Docker
+For testing and development purposes, the Tile Server tests can be executed locally in Docker.
+Arguments can be passed to docker run to configure the endpoint, test type, source bucket, and source image.
 For example, the container can be built and run as follows:
 
-```
+```sh
 docker build . -t tile-server-test:latest
 docker run --name osml-tile-server-test tile-server-test:latest --endpoint <Endpoint URL> --test_type integ --source_image_bucket <S3 bucket> --source_image_key <S3 Image Key> -v
 ```
 
-### Running LoadTest
-
-(In progress)
+If testing against a local tile server, ```--network host``` may need to be added as a ```docker run``` flag.
 
 
 ## Support & Feedback

@@ -1,5 +1,3 @@
-# FROM public.ecr.aws/amazonlinux/amazonlinux:latest as osml_tile_server_test
-
 FROM public.ecr.aws/lambda/python:3.11 as osml_tile_server_test
 
 # Only override if you're using a mirror with a cert pulled in using cert-base as a build parameter
@@ -47,7 +45,6 @@ RUN conda clean -afy
 ENV PATH /usr/local/envs/${CONDA_ENV_NAME}/bin:$PATH
 
 # Import the source directory to the generalized path
-# ENV PYTHONPATH="./src/"
 ENV PYTHONPATH="/usr/local/envs/${CONDA_ENV_NAME}/bin"
 
 ENTRYPOINT ["python", "src/aws/osml/run_test.py"]
