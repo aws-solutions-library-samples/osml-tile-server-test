@@ -48,7 +48,3 @@ ENV PATH /usr/local/envs/${CONDA_ENV_NAME}/bin:$PATH
 ENV PYTHONPATH="/usr/local/envs/${CONDA_ENV_NAME}/bin"
 
 ENTRYPOINT ["python", "src/aws/osml/run_test.py"]
-
-# example build and run commands:
-# docker build . -t tile-server-test:latest
-# docker run --name osml-tile-server-test --network host tile-server-test:latest --endpoint http://localhost:8080/latest --test_type integ --source_image_bucket test-images-008372964747 --source_image_key small.tif -v
