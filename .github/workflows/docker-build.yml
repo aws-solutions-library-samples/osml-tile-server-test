@@ -1,0 +1,14 @@
+name: Build Tile Server Docker Container
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: 'true'
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag osml-tile-server-test:$(date +%s)
