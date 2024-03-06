@@ -1,3 +1,5 @@
+# Copyright 2024 Amazon.com, Inc. or its affiliates.
+
 FROM public.ecr.aws/lambda/python:3.11 as osml_tile_server_test
 
 # Only override if you're using a mirror with a cert pulled in using cert-base as a build parameter

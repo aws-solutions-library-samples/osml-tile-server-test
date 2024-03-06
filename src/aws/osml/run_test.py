@@ -1,6 +1,5 @@
 #  Copyright 2024 Amazon.com, Inc. or its affiliates.
 
-# import first for locust workaround https://github.com/gevent/gevent/issues/1016
 import logging
 import os
 import sys
@@ -13,6 +12,7 @@ from gevent import monkey
 from integ import TestTileServer, TileServerIntegTestConfig
 from load import run_load_test
 
+# locust workaround https://github.com/gevent/gevent/issues/1016
 monkey.patch_all()
 
 
