@@ -1,22 +1,26 @@
 #  Copyright 2024 Amazon.com, Inc. or its affiliates.
 
+import json
 import os
 import random
 import time
 from math import ceil, log
-from pathlib import Path
 from secrets import token_hex
 from typing import List, Optional
 
-import boto3
 import gevent
-from botocore.config import Config
 from hilbertcurve.hilbertcurve import HilbertCurve
 from locust import FastHttpUser, between, events, task
 
 VIEWPOINT_STATUS = "viewpoint_status"
 
 VIEWPOINT_ID = "viewpoint_id"
+
+
+@events.init_command_line_parser.add_listener
+def _(parser):
+    parser.add_argument("--test_images_bucket", type=str, default=os.environ.get("LOCUST_TEST_IMAGES_BUCKET"))
+    parser.add_argument("--test_image_keys", type=str, default=json.loads(os.environ.get("LOCUST_TEST_IMAGE_KEYS", "[]")))
 
 
 @events.test_start.add_listener
@@ -28,8 +32,8 @@ def _(environment, **kwargs):
     :param kwargs: Additional keyword arguments (unused).
     :return: None
     """
-    print(f"Using imagery from: {environment.parsed_options.test_images_bucket}")
-    print(f"With object Prefix: {environment.parsed_options.test_images_prefix}")
+    print(f"Using bucket: {environment.parsed_options.test_images_bucket}")
+    print(f"Using images: {environment.parsed_options.test_image_keys}")
 
 
 class TileServerUser(FastHttpUser):
@@ -68,35 +72,19 @@ class TileServerUser(FastHttpUser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.test_images_bucket = self.environment.parsed_options.test_images_bucket
-        self.test_images_prefix = self.environment.parsed_options.test_images_prefix or None
-        self.test_image_keys = []
+        if isinstance(self.environment.parsed_options.test_image_keys, list):
+            self.test_image_keys = self.environment.parsed_options.test_image_keys
+        else:
+            self.test_image_keys = [self.environment.parsed_options.test_image_keys]
 
     def on_start(self) -> None:
         """
-        Locust invokes this method when the user is created. It identifies the set of test imagery object keys
-        from the S3 bucket provided.
+        Locust invokes this method when the user is created. It checks if test images were provided.
         """
-        s3_client = boto3.client("s3", config=Config(region_name=os.getenv("AWS_DEFAULT_REGION", "us-west-2")))
-        paginator = s3_client.get_paginator("list_objects_v2")
-        response_iterator = paginator.paginate(
-            Bucket=self.test_images_bucket,
-            Prefix=self.test_images_prefix,
-            PaginationConfig={"MaxItems": 200, "PageSize": 20},
-        )
-        for response in response_iterator:
-            if "Contents" not in response:
-                print(response)
-
-            for item in response["Contents"]:
-                object_key = item["Key"]
-                object_suffix = Path(object_key).suffix.lower()
-                if object_suffix in [".tif", ".tiff", ".ntf", ".nitf"]:
-                    self.test_image_keys.append(object_key)
-
         if not self.test_image_keys:
-            raise ValueError(f"Unable to find any test imagery in {self.test_images_bucket}")
+            raise ValueError("No test imagery specified by --locust_image_keys")
         else:
-            print(f"Found {len(self.test_image_keys)} test images in {self.test_images_bucket}")
+            print(f"Using {len(self.test_image_keys)} test images")
 
     @task(5)
     def view_new_image_behavior(self) -> None:

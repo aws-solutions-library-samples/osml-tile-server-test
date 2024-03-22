@@ -1,10 +1,13 @@
 #  Copyright 2024 Amazon.com, Inc. or its affiliates.
 
+import json
 import logging
 import os
 import sys
 import traceback
 from argparse import ArgumentParser
+from datetime import datetime, timezone
+from distutils.util import strtobool
 from typing import Dict, Tuple
 
 import requests
@@ -24,19 +27,24 @@ def set_integ_test_config(runtime_params: Dict) -> TileServerIntegTestConfig:
     return test_config
 
 
-def set_load_test_env(args) -> None:
+def set_load_test_env(args: Dict) -> None:
+    datetime_now_string = datetime.now(timezone.utc).isoformat(timespec="seconds").replace(":", "")
+    is_headless = args.get("locust_headless")
     # https://stackoverflow.com/questions/46397580/how-to-invoke-locust-tests-programmatically
-    os.environ["LOCUST_LOCUSTFILE"] = "locust_ts_user.py"
-    os.environ["LOCUST_HEADLESS"] = str(True)
-    os.environ["LOCUST_CSV"] = str(True)
-    os.environ["LOCUST_HTML"] = str(True)
+    os.environ["LOCUST_LOCUSTFILE"] = "src/aws/osml/load/locust_ts_user.py"
+    if is_headless:
+        os.environ["LOCUST_HEADLESS"] = str(is_headless)
+        os.environ["LOCUST_RUN_TIME"] = args.get("locust_run_time")
+        os.environ["LOCUST_USERS"] = args.get("locust_users")
+        os.environ["LOCUST_SPAWN_RATE"] = args.get("locust_spawn_rate")
+    else:
+        os.environ["LOCUST_CSV"] = datetime_now_string
+        os.environ["LOCUST_HTML"] = datetime_now_string
     os.environ["LOCUST_HOST"] = args.get("endpoint", "")
-    os.environ["LOCUST_RUN_TIME"] = args.get("LOCUST_RUN_TIME", "5m")
-    os.environ["LOCUST_CLIENTS"] = str(args.get("LOCUST_CLIENTS"))
-    os.environ["LOCUST_HATCH_RATE"] = str(args.get("LOCUST_HATCH_RATE"))
+
     # custom Locus params
     os.environ["LOCUST_TEST_IMAGES_BUCKET"] = args.get("source_image_bucket", "")
-    os.environ["LOCUST_TEST_IMAGES_PREFIX"] = args.get("source_image_key", "")
+    os.environ["LOCUST_TEST_IMAGE_KEYS"] = json.dumps(args.get("locust_image_keys", []))
 
 
 def lambda_get_next(lambda_runtime_api: str, function_name: str) -> Tuple[Dict, Dict]:
@@ -60,6 +68,7 @@ def lambda_send_failure(lambda_runtime_api: str, request_id: str, error_info: Di
 
 
 def main(cmd_args: Dict) -> None:
+    exit_message: str | int = 0
     # Set logging from cmd_args
     if cmd_args.get("v"):
         logging.basicConfig(level=logging.INFO)
@@ -88,7 +97,6 @@ def main(cmd_args: Dict) -> None:
             server_to_test.run_integ_test()
             if lambda_runtime_api and lambda_request_id:
                 lambda_send_success(lambda_runtime_api, lambda_request_id)
-            sys.exit(0)
         except Exception as err:
             if lambda_runtime_api and lambda_request_id:
                 error_info = {
@@ -97,24 +105,64 @@ def main(cmd_args: Dict) -> None:
                     "stackTrace": [traceback.format_exc()],
                 }
                 lambda_send_failure(lambda_runtime_api, lambda_request_id, error_info)
-            sys.exit(f"{err}")
+            exit_message = f"{err}"
     elif "load" in runtime_args.get("test_type", "").lower():
-        load_test_config = set_load_test_env(runtime_args)
-        run_load_test(load_test_config)
+        set_load_test_env(runtime_args)
+        try:
+            run_load_test(os.environ.get("LOCUST_RUN_TIME", ""))
+            if lambda_runtime_api and lambda_request_id:
+                lambda_send_success(lambda_runtime_api, lambda_request_id)
+        except Exception as err:
+            if lambda_runtime_api and lambda_request_id:
+                error_info = {
+                    "errorMessage": str(err),
+                    "errorType": type(err).__name__,
+                    "stackTrace": [traceback.format_exc()],
+                }
+                lambda_send_failure(lambda_runtime_api, lambda_request_id, error_info)
+            exit_message = f"{err}"
     else:
         message = f"--test_type {runtime_args.get('test_type')} not recognized. Valid options are [ 'integ' | 'load' ]."
         if lambda_runtime_api and lambda_request_id:
             error_info = {"errorMessage": message, "errorType": "ArgumentError", "stackTrace": []}
             lambda_send_failure(lambda_runtime_api, lambda_request_id, error_info)
-        sys.exit(message)
+        exit_message = message
+    sys.exit(exit_message)
+
+
+def list_of_strings(arg) -> list:
+    return arg.split(",")
 
 
 if __name__ == "__main__":
     parser = ArgumentParser("test_tile_server")
-    parser.add_argument("--endpoint", help="Endpoint of the Tile Server to test", type=str, required=True)
-    parser.add_argument("--test_type", help="Type of test to run against Tile Server. Options: Integ | Load", type=str)
+    parser.add_argument("--endpoint", help="Endpoint of the Tile Server to test", type=str)
+    parser.add_argument("--test_type", help="Type of test to run against Tile Server.", choices=["integ", "load"], type=str)
     parser.add_argument("--source_image_bucket", help="Bucket containing images to use for Tile Server tests.", type=str)
     parser.add_argument("--source_image_key", help="S3 object key of the image to use for Tile Server tests.", type=str)
+    parser.add_argument(
+        "--locust_headless",
+        help="Load Test: Disable the web interface, and start the test immediately.",
+        type=lambda x: bool(strtobool(str(x))),
+        default=False,
+    )
+    parser.add_argument("--locust_users", help="Load Test: Peak number of concurrent Locust users.", type=str, default="1")
+    parser.add_argument(
+        "--locust_run_time",
+        help="Load Test: Stop after the specified amount of time, e.g. (300s, 20m, 3h, 1h30m, etc.)",
+        type=str,
+        default="5m",
+    )
+    parser.add_argument(
+        "--locust_spawn_rate", help="Load Test: Rate to spawn users at (users per second).", type=str, default="1"
+    )
+    parser.add_argument(
+        "--locust_image_keys",
+        help="Load Test: Comma separated list of image keys to use for the load test.",
+        type=list_of_strings,
+        default=[],
+    )
+
     parser.add_argument("-v", help="Increase output verbosity", action="store_true")
     parser.add_argument("-vv", help="Additional increase in output verbosity", action="store_true")
     main(vars(parser.parse_args()))

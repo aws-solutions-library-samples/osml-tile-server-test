@@ -7,7 +7,9 @@ dependencies:
   - python=3.11
   - requests
   - boto3
+  - numpy
   - conda-forge::proj=9.3.0
+  - conda-forge::hilbertcurve
   - pip
   - pip:
     - locust
