@@ -1,8 +1,8 @@
 name: "OSML Tile Server Test Build and Publish Workflow"
 
 on:
-  push:
-    branches: ["main", "dev"]
+  release:
+    types: [published]
 
 jobs:
   Build_Validate_Tox:
