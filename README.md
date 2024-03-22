@@ -60,14 +60,27 @@ from the guidance repository.
 #### In Docker
 For testing and development purposes, the Tile Server tests can be executed locally in Docker.
 Arguments can be passed to docker run to configure the endpoint, test type, source bucket, and source image.
-For example, the container can be built and run as follows:
+If testing against a local tile server, ```--network host``` may need to be added as a ```docker run``` flag.
 
+Example Build:
 ```sh
 docker build . -t tile-server-test:latest
-docker run --name osml-tile-server-test tile-server-test:latest --endpoint <Endpoint URL> --test_type integ --source_image_bucket <S3 bucket> --source_image_key <S3 Image Key> -v
 ```
+Example Integration test:
+```sh
+docker run --name osml-tile-server-test --rm tile-server-test:latest --endpoint <Endpoint URL> --test_type integ --source_image_bucket <S3 bucket> --source_image_key <S3 Image Key> -v
+```
+Example Locust Load test (Default UI address is http://localhost:8089):
+```sh
+docker run --name osml-tile-server-test --rm tile-server-test:latest --endpoint <Endpoint URL> --test_type load --source_image_bucket <S3 bucket> --locust_image_keys <S3 Image Key>,<S3 Image Key> -v
+```
+Other optional load test flags are:
 
-If testing against a local tile server, ```--network host``` may need to be added as a ```docker run``` flag.
+- ```--locust_headless <true/false>``` Disable the web interface, and start the test immediately. Default: False
+- ```--locust_users <number>``` Load Test: Peak number of concurrent Locust users.
+- ```--locust_run_time <string>``` Stop after the specified amount of time, e.g. (300s, 20m, 3h, 1h30m, etc.)
+- ```--locust_spawn_rate <string>``` Rate to spawn users at (users per second).
+
 
 
 ## Support & Feedback
