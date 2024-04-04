@@ -1,0 +1,111 @@
+:py:mod:`integ.test_tile_server`
+================================
+
+.. py:module:: integ.test_tile_server
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   integ.test_tile_server.AutoStringEnum
+   integ.test_tile_server.TestResult
+   integ.test_tile_server.TestTileServer
+
+
+
+
+.. py:class:: AutoStringEnum(*args, **kwds)
+
+
+   Bases: :py:obj:`enum.Enum`
+
+   A class used to represent an Enum where the value of the Enum member is the same as the name of the Enum member.
+
+   .. py:method:: _generate_next_value_(name, start, count, last_values) -> str
+      :staticmethod:
+
+      Function to iterate through the Enum members.
+
+      :param: name: Name of the Enum member.
+      :param: start: Initial integer to start with.
+      :param: count: Number of existing members.
+      :param: last_values: List of values for existing members.
+
+      :return: The next value of the enumeration which is the same as the name.
+
+
+
+.. py:class:: TestResult
+
+
+   Bases: :py:obj:`str`, :py:obj:`AutoStringEnum`
+
+   Provides enumeration of test result.
+
+   :cvar PASSED: Test passed.
+   :cvar FAILED: Test failed.
+
+   .. py:attribute:: PASSED
+
+      
+
+   .. py:attribute:: FAILED
+
+      
+
+
+.. py:class:: TestTileServer(test_config: integ.test_config.TileServerIntegTestConfig)
+
+
+   .. py:method:: run_integ_test() -> None
+
+
+   .. py:method:: wait_for_viewpoint_ready() -> None
+
+
+   .. py:method:: test_create_viewpoint() -> None
+
+
+   .. py:method:: test_describe_viewpoint() -> None
+
+
+   .. py:method:: test_list_viewpoints() -> None
+
+
+   .. py:method:: test_update_viewpoint() -> None
+
+
+   .. py:method:: test_get_metadata() -> None
+
+
+   .. py:method:: test_get_bounds() -> None
+
+
+   .. py:method:: test_get_info() -> None
+
+
+   .. py:method:: test_get_statistics() -> None
+
+
+   .. py:method:: test_get_preview() -> None
+
+
+   .. py:method:: test_get_tile() -> None
+
+
+   .. py:method:: test_get_crop() -> None
+
+
+   .. py:method:: test_delete_viewpoint() -> None
+
+
+   .. py:method:: _pretty_print_test_results(test_results: Dict[str, TestResult]) -> str
+      :staticmethod:
+
+
+

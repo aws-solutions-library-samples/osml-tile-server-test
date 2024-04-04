@@ -1,0 +1,12 @@
+aws namespace
+=============
+
+.. py:module:: aws
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   aws.osml

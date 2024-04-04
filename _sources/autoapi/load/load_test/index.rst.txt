@@ -1,0 +1,22 @@
+:py:mod:`load.load_test`
+========================
+
+.. py:module:: load.load_test
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   load.load_test.run_load_test
+
+
+
+.. py:function:: run_load_test(locust_run_time: str = '') -> None
+
+

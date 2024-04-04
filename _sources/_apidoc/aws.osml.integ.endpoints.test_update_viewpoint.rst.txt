@@ -1,0 +1,7 @@
+aws.osml.integ.endpoints.test\_update\_viewpoint module
+=======================================================
+
+.. automodule:: aws.osml.integ.endpoints.test_update_viewpoint
+   :members:
+   :undoc-members:
+   :show-inheritance:

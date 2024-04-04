@@ -1,0 +1,7 @@
+aws.osml.integ.endpoints.test\_get\_info module
+===============================================
+
+.. automodule:: aws.osml.integ.endpoints.test_get_info
+   :members:
+   :undoc-members:
+   :show-inheritance:

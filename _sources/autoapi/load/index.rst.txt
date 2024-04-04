@@ -1,0 +1,32 @@
+:py:mod:`load`
+==============
+
+.. py:module:: load
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   load_test/index.rst
+   locust_ts_user/index.rst
+
+
+Package Contents
+----------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   load.run_load_test
+
+
+
+.. py:function:: run_load_test(locust_run_time: str = '') -> None
+
+

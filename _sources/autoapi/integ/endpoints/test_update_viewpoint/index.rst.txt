@@ -1,0 +1,57 @@
+:py:mod:`integ.endpoints.test_update_viewpoint`
+===============================================
+
+.. py:module:: integ.endpoints.test_update_viewpoint
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   integ.endpoints.test_update_viewpoint.update_viewpoint
+   integ.endpoints.test_update_viewpoint.update_viewpoint_invalid_deleted
+   integ.endpoints.test_update_viewpoint.update_viewpoint_invalid_missing_field
+
+
+
+.. py:function:: update_viewpoint(session: requests.Session, url: str, viewpoint_id: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Successfully update the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+
+.. py:function:: update_viewpoint_invalid_deleted(session: requests.Session, url: str, viewpoint_id: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Failed to update the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+
+.. py:function:: update_viewpoint_invalid_missing_field(session: requests.Session, url: str, viewpoint_id: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Failed to update the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+

@@ -1,0 +1,7 @@
+aws.osml.integ.endpoints.test\_get\_tile module
+===============================================
+
+.. automodule:: aws.osml.integ.endpoints.test_get_tile
+   :members:
+   :undoc-members:
+   :show-inheritance:

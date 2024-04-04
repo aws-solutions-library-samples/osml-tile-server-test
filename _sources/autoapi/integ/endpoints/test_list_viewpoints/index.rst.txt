@@ -1,0 +1,29 @@
+:py:mod:`integ.endpoints.test_list_viewpoints`
+==============================================
+
+.. py:module:: integ.endpoints.test_list_viewpoints
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   integ.endpoints.test_list_viewpoints.list_viewpoints
+
+
+
+.. py:function:: list_viewpoints(session: requests.Session, url: str) -> None
+
+   Test Case: Successfully get the list of the viewpoints
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+
+   return: None
+
+

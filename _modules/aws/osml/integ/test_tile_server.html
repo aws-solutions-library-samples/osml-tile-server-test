@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aws.osml.integ.test_tile_server &mdash; OversightML Tile Server Test  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=eafc0fe6" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            OversightML Tile Server Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">OversightML Tile Server Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">aws.osml.integ.test_tile_server</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aws.osml.integ.test_tile_server</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright 2024 Amazon.com, Inc. or its affiliates.</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span><span class="p">,</span> <span class="n">auto</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span>
+
+<span class="kn">from</span> <span class="nn">requests</span> <span class="kn">import</span> <span class="n">Session</span>
+
+<span class="kn">from</span> <span class="nn">.endpoints</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">create_viewpoint</span><span class="p">,</span>
+    <span class="n">create_viewpoint_invalid</span><span class="p">,</span>
+    <span class="n">delete_viewpoint</span><span class="p">,</span>
+    <span class="n">delete_viewpoint_invalid</span><span class="p">,</span>
+    <span class="n">describe_viewpoint</span><span class="p">,</span>
+    <span class="n">get_bounds</span><span class="p">,</span>
+    <span class="n">get_crop</span><span class="p">,</span>
+    <span class="n">get_info</span><span class="p">,</span>
+    <span class="n">get_metadata</span><span class="p">,</span>
+    <span class="n">get_preview</span><span class="p">,</span>
+    <span class="n">get_statistics</span><span class="p">,</span>
+    <span class="n">get_tile</span><span class="p">,</span>
+    <span class="n">list_viewpoints</span><span class="p">,</span>
+    <span class="n">update_viewpoint</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.test_config</span> <span class="kn">import</span> <span class="n">TileServerIntegTestConfig</span>
+
+
+<div class="viewcode-block" id="AutoStringEnum">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.AutoStringEnum">[docs]</a>
+<span class="k">class</span> <span class="nc">AutoStringEnum</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class used to represent an Enum where the value of the Enum member is the same as the name of the Enum member.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_generate_next_value_</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">last_values</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function to iterate through the Enum members.</span>
+
+<span class="sd">        :param: name: Name of the Enum member.</span>
+<span class="sd">        :param: start: Initial integer to start with.</span>
+<span class="sd">        :param: count: Number of existing members.</span>
+<span class="sd">        :param: last_values: List of values for existing members.</span>
+
+<span class="sd">        :return: The next value of the enumeration which is the same as the name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">name</span></div>
+
+
+
+<div class="viewcode-block" id="TestResult">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestResult">[docs]</a>
+<span class="k">class</span> <span class="nc">TestResult</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">AutoStringEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provides enumeration of test result.</span>
+
+<span class="sd">    :cvar PASSED: Test passed.</span>
+<span class="sd">    :cvar FAILED: Test failed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">PASSED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="TestTileServer">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer">[docs]</a>
+<span class="k">class</span> <span class="nc">TestTileServer</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_config</span><span class="p">:</span> <span class="n">TileServerIntegTestConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span> <span class="n">TileServerIntegTestConfig</span> <span class="o">=</span> <span class="n">test_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">:</span> <span class="n">Session</span> <span class="o">=</span> <span class="n">Session</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">endpoint</span><span class="si">}</span><span class="s2">/viewpoints&quot;</span>
+
+<div class="viewcode-block" id="TestTileServer.run_integ_test">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.run_integ_test">[docs]</a>
+    <span class="k">def</span> <span class="nf">run_integ_test</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Running Tile Server integration test&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_create_viewpoint</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_describe_viewpoint</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wait_for_viewpoint_ready</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_list_viewpoints</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_update_viewpoint</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_metadata</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_bounds</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_info</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_statistics</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_preview</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_tile</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_get_crop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_delete_viewpoint</span><span class="p">()</span>
+        <span class="n">test_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pretty_print_test_results</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">test_summary</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">test_summary</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.wait_for_viewpoint_ready">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.wait_for_viewpoint_ready">[docs]</a>
+    <span class="k">def</span> <span class="nf">wait_for_viewpoint_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">polling_interval_sec</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">timeout_sec</span> <span class="o">=</span> <span class="mi">300</span>
+        <span class="n">elapsed_wait_time</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Waiting for viewpoint status to be READY&quot;</span><span class="p">)</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;REQUESTED&quot;</span>
+        <span class="k">while</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;REQUESTED&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">elapsed_wait_time</span> <span class="o">&gt;</span> <span class="n">timeout_sec</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test timed out waiting for viewpoint to be READY after </span><span class="si">{</span><span class="n">elapsed_wait_time</span><span class="si">}</span><span class="s2"> seconds.&quot;</span><span class="p">)</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;viewpoint_status&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;...&quot;</span><span class="p">)</span>
+            <span class="n">sleep</span><span class="p">(</span><span class="n">polling_interval_sec</span><span class="p">)</span>
+            <span class="n">elapsed_wait_time</span> <span class="o">+=</span> <span class="n">polling_interval_sec</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">!=</span> <span class="s2">&quot;READY&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Viewpoint status is </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">. Expected READY&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_create_viewpoint">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_create_viewpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_create_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing create invalid viewpoint&quot;</span><span class="p">)</span>
+            <span class="n">create_viewpoint_invalid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">invalid_viewpoint</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Create Viewpoint - Invalid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Create Viewpoint - Invalid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing create viewpoint&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span> <span class="o">=</span> <span class="n">create_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">test_viewpoint</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Create Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Create Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_describe_viewpoint">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_describe_viewpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_describe_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing describe viewpoint&quot;</span><span class="p">)</span>
+            <span class="n">describe_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Describe Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Describe Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_list_viewpoints">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_list_viewpoints">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_list_viewpoints</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing list viewpoints&quot;</span><span class="p">)</span>
+            <span class="n">list_viewpoints</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;List Viewpoints&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;List Viewpoints&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_update_viewpoint">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_update_viewpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_update_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing update viewpoint&quot;</span><span class="p">)</span>
+            <span class="n">update_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">valid_update_test_body</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Update Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Update Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_metadata">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_metadata">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get metadata&quot;</span><span class="p">)</span>
+            <span class="n">get_metadata</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Metadata&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Metadata&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_bounds">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_bounds">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get bounds&quot;</span><span class="p">)</span>
+            <span class="n">get_bounds</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Bounds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Bounds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_info">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get info&quot;</span><span class="p">)</span>
+            <span class="n">get_info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Info&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Info&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_statistics">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_statistics">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get statistics&quot;</span><span class="p">)</span>
+            <span class="n">get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Statistics&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Statistics&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_preview">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_preview">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_preview</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get preview&quot;</span><span class="p">)</span>
+            <span class="n">get_preview</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Preview&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Preview&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_tile">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_tile">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_tile</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get tile&quot;</span><span class="p">)</span>
+            <span class="n">get_tile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Tile&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Tile&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_get_crop">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_get_crop">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_get_crop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing get crop&quot;</span><span class="p">)</span>
+            <span class="n">get_crop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Crop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Get Crop&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+<div class="viewcode-block" id="TestTileServer.test_delete_viewpoint">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.integ.test_tile_server.html#aws.osml.integ.test_tile_server.TestTileServer.test_delete_viewpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">test_delete_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing delete viewpoint&quot;</span><span class="p">)</span>
+            <span class="n">delete_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Delete Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Delete Viewpoint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Testing delete viewpoint invalid&quot;</span><span class="p">)</span>  <span class="c1"># viewpoint already deleted</span>
+            <span class="n">delete_viewpoint_invalid</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoints_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Delete Viewpoint - Invalid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">Failed. </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">print_exception</span><span class="p">(</span><span class="n">err</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_results</span><span class="p">[</span><span class="s2">&quot;Delete Viewpoint - Invalid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_pretty_print_test_results</span><span class="p">(</span><span class="n">test_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TestResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">max_key_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">test_results</span><span class="o">.</span><span class="n">keys</span><span class="p">()])</span>
+        <span class="n">sorted_results</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">test_results</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()))</span>
+        <span class="n">test_counter</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">test_results</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">results_str</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Test Summary</span><span class="se">\n</span><span class="s2">-------------------------------------</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">sorted_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">results_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="n">max_key_length</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">5</span><span class="p">)</span><span class="si">}{</span><span class="n">v</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="n">n_tests</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_results</span><span class="p">)</span>
+        <span class="n">passed</span> <span class="o">=</span> <span class="n">test_counter</span><span class="p">[</span><span class="n">TestResult</span><span class="o">.</span><span class="n">PASSED</span><span class="p">]</span>
+        <span class="n">failed</span> <span class="o">=</span> <span class="n">test_counter</span><span class="p">[</span><span class="n">TestResult</span><span class="o">.</span><span class="n">FAILED</span><span class="p">]</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">passed</span> <span class="o">/</span> <span class="n">n_tests</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="n">results_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;    Tests: </span><span class="si">{</span><span class="n">n_tests</span><span class="si">}</span><span class="s2">, Passed: </span><span class="si">{</span><span class="n">passed</span><span class="si">}</span><span class="s2">, Failed: </span><span class="si">{</span><span class="n">failed</span><span class="si">}</span><span class="s2">, Success: </span><span class="si">{</span><span class="n">success</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span>
+        <span class="k">return</span> <span class="n">results_str</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amazon.com.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>  
+
+<style>
+    .wy-nav-content { max-width: none; }
+</style>
+
+
+
+</body>
+</html>

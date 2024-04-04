@@ -1,0 +1,7 @@
+aws.osml.integ.endpoints.test\_delete\_viewpoint module
+=======================================================
+
+.. automodule:: aws.osml.integ.endpoints.test_delete_viewpoint
+   :members:
+   :undoc-members:
+   :show-inheritance:

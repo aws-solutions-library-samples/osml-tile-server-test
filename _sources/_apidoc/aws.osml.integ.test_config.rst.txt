@@ -1,0 +1,7 @@
+aws.osml.integ.test\_config module
+==================================
+
+.. automodule:: aws.osml.integ.test_config
+   :members:
+   :undoc-members:
+   :show-inheritance:

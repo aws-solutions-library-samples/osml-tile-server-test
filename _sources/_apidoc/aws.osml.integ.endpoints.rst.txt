@@ -1,0 +1,7 @@
+aws.osml.integ.endpoints 
+=========================
+
+.. automodule:: aws.osml.integ.endpoints
+   :members:
+   :undoc-members:
+   :show-inheritance:

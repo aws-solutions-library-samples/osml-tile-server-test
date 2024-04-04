@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aws.osml.load.locust_ts_user &mdash; OversightML Tile Server Test  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=eafc0fe6" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            OversightML Tile Server Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">OversightML Tile Server Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">aws.osml.load.locust_ts_user</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for aws.osml.load.locust_ts_user</h1><div class="highlight"><pre>
+<span></span><span class="c1">#  Copyright 2024 Amazon.com, Inc. or its affiliates.</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">ceil</span><span class="p">,</span> <span class="n">log</span>
+<span class="kn">from</span> <span class="nn">secrets</span> <span class="kn">import</span> <span class="n">token_hex</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">gevent</span>
+<span class="kn">from</span> <span class="nn">hilbertcurve.hilbertcurve</span> <span class="kn">import</span> <span class="n">HilbertCurve</span>
+<span class="kn">from</span> <span class="nn">locust</span> <span class="kn">import</span> <span class="n">FastHttpUser</span><span class="p">,</span> <span class="n">between</span><span class="p">,</span> <span class="n">events</span><span class="p">,</span> <span class="n">task</span>
+
+<span class="n">VIEWPOINT_STATUS</span> <span class="o">=</span> <span class="s2">&quot;viewpoint_status&quot;</span>
+
+<span class="n">VIEWPOINT_ID</span> <span class="o">=</span> <span class="s2">&quot;viewpoint_id&quot;</span>
+
+
+<span class="nd">@events</span><span class="o">.</span><span class="n">init_command_line_parser</span><span class="o">.</span><span class="n">add_listener</span>
+<span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--test_images_bucket&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;LOCUST_TEST_IMAGES_BUCKET&quot;</span><span class="p">))</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--test_image_keys&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;LOCUST_TEST_IMAGE_KEYS&quot;</span><span class="p">,</span> <span class="s2">&quot;[]&quot;</span><span class="p">)))</span>
+
+
+<span class="nd">@events</span><span class="o">.</span><span class="n">test_start</span><span class="o">.</span><span class="n">add_listener</span>
+<span class="k">def</span> <span class="nf">_</span><span class="p">(</span><span class="n">environment</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method prints the test images bucket and object prefix from the given environment.</span>
+
+<span class="sd">    :param environment: The environment object containing parsed options.</span>
+<span class="sd">    :param kwargs: Additional keyword arguments (unused).</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using bucket: </span><span class="si">{</span><span class="n">environment</span><span class="o">.</span><span class="n">parsed_options</span><span class="o">.</span><span class="n">test_images_bucket</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using images: </span><span class="si">{</span><span class="n">environment</span><span class="o">.</span><span class="n">parsed_options</span><span class="o">.</span><span class="n">test_image_keys</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TileServerUser">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser">[docs]</a>
+<span class="k">class</span> <span class="nc">TileServerUser</span><span class="p">(</span><span class="n">FastHttpUser</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :class:`TileServerUser` is a class representing a user that interacts with a tile server. It inherits from</span>
+<span class="sd">    `FastHttpUser` class provided by the `locust` library. The class provides methods for simulating user behavior on</span>
+<span class="sd">    the tile server, such as creating, retrieving, and discarding viewpoints, as well as querying metadata, bounds,</span>
+<span class="sd">    info, and statistics of existing viewpoints.</span>
+
+<span class="sd">    Examples:</span>
+<span class="sd">        Creating an instance of :class:`TileServerUser` and running a load test with Locust:</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            from locust import User, TaskSet, constant, HttpUser, between</span>
+<span class="sd">            from tile.server.user import TileServerUser</span>
+
+<span class="sd">            class MyUser(HttpUser):</span>
+<span class="sd">                tasks = [TileServerUser]</span>
+<span class="sd">                wait_time = between(1, 2)</span>
+
+<span class="sd">    To run the locust file:</span>
+<span class="sd">    $res locust -f filename.py with python 3.8.5 and above; for old versions of python we may use locustio instead of locust</span>
+<span class="sd">    :class:`TileServerUser` provides the following instance variables:</span>
+<span class="sd">        - `test_images_bucket`: The S3 bucket name for test images.</span>
+<span class="sd">        - `test_images_prefix`: The prefix for filtering test images within the S3 bucket.</span>
+<span class="sd">        - `test_image_keys`: The list of test image keys in the S3 bucket.</span>
+<span class="sd">        - `wait_time`: The time interval (in seconds) between each task execution.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Establishes a 1-2 second wait between tasks</span>
+    <span class="n">wait_time</span> <span class="o">=</span> <span class="n">between</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_images_bucket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">parsed_options</span><span class="o">.</span><span class="n">test_images_bucket</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">parsed_options</span><span class="o">.</span><span class="n">test_image_keys</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_image_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">parsed_options</span><span class="o">.</span><span class="n">test_image_keys</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_image_keys</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">environment</span><span class="o">.</span><span class="n">parsed_options</span><span class="o">.</span><span class="n">test_image_keys</span><span class="p">]</span>
+
+<div class="viewcode-block" id="TileServerUser.on_start">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.on_start">[docs]</a>
+    <span class="k">def</span> <span class="nf">on_start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Locust invokes this method when the user is created. It checks if test images were provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_image_keys</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No test imagery specified by --locust_image_keys&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_image_keys</span><span class="p">)</span><span class="si">}</span><span class="s2"> test images&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.view_new_image_behavior">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.view_new_image_behavior">[docs]</a>
+    <span class="nd">@task</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">view_new_image_behavior</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This task simulates a user creating, retrieving tiles from, and then discarding a viewpoint.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">viewpoint_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_images_bucket</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_image_keys</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">viewpoint_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">final_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wait_for_viewpoint_ready</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">final_status</span> <span class="o">==</span> <span class="s2">&quot;READY&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">request_tiles</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">final_status</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;READY&quot;</span><span class="p">,</span> <span class="s2">&quot;FAILED&quot;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cleanup_viewpoint</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.discover_viewpoints_behavior">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.discover_viewpoints_behavior">[docs]</a>
+    <span class="nd">@task</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">discover_viewpoints_behavior</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This task simulates a user accessing a web page that displays an active list of viewpoints. The main query</span>
+<span class="sd">        API is invoked then details including the image preview, metadata, and detailed statistics are called</span>
+<span class="sd">        for each image.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># TODO: Update this to work on a per-page basis once the list viewpoints operation is paginated</span>
+        <span class="n">viewpoint_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">list_ready_viewpoints</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">get_viewpoint_details</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_viewpoint_metadata</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_viewpoint_info</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_viewpoint_bounds</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_viewpoint_preview</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">get_viewpoint_statistics</span><span class="p">(</span><span class="n">viewpoint_id</span><span class="p">)</span>
+
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">gevent</span><span class="o">.</span><span class="n">pool</span><span class="o">.</span><span class="n">Pool</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">viewpoint_id</span> <span class="ow">in</span> <span class="n">viewpoint_ids</span><span class="p">:</span>
+            <span class="n">pool</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">get_viewpoint_details</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">)</span>
+        <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.create_viewpoint">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.create_viewpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">create_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_images_bucket</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">test_image_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Creates a viewpoint with specified parameters.</span>
+
+<span class="sd">        :param test_images_bucket: bucket containing test images</span>
+<span class="sd">        :param test_image_key: key of the test image</span>
+<span class="sd">        :return: ID of the created viewpoint or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span>
+            <span class="s2">&quot;POST&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;/viewpoints&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;CreateViewpoint&quot;</span><span class="p">,</span>
+            <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;viewpoint_name&quot;</span><span class="p">:</span> <span class="s2">&quot;LocustUser-Viewpoint-&quot;</span> <span class="o">+</span> <span class="n">token_hex</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+                <span class="s2">&quot;bucket_name&quot;</span><span class="p">:</span> <span class="n">test_images_bucket</span><span class="p">,</span>
+                <span class="s2">&quot;object_key&quot;</span><span class="p">:</span> <span class="n">test_image_key</span><span class="p">,</span>
+                <span class="s2">&quot;tile_size&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">]),</span>
+                <span class="s2">&quot;range_adjustment&quot;</span><span class="p">:</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&quot;NONE&quot;</span><span class="p">,</span> <span class="s2">&quot;DRA&quot;</span><span class="p">,</span> <span class="s2">&quot;MINMAX&quot;</span><span class="p">]),</span>
+            <span class="p">},</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">VIEWPOINT_ID</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                    <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">VIEWPOINT_ID</span><span class="si">}</span><span class="s2">&#39; missing from response </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="n">VIEWPOINT_ID</span><span class="p">]</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.wait_for_viewpoint_ready">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.wait_for_viewpoint_ready">[docs]</a>
+    <span class="k">def</span> <span class="nf">wait_for_viewpoint_ready</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Waits for the viewpoint with specified ID to become ready.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to wait for</span>
+<span class="sd">        :return: final status of the viewpoint</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">num_retries</span> <span class="o">=</span> <span class="mi">120</span>
+        <span class="n">final_status</span> <span class="o">=</span> <span class="s2">&quot;NOT_FOUND&quot;</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">done</span> <span class="ow">and</span> <span class="n">num_retries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;DescribeViewpoint&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">VIEWPOINT_STATUS</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                    <span class="n">final_status</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="n">VIEWPOINT_STATUS</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="n">VIEWPOINT_STATUS</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;READY&quot;</span><span class="p">,</span> <span class="s2">&quot;FAILED&quot;</span><span class="p">,</span> <span class="s2">&quot;DELETED&quot;</span><span class="p">]:</span>
+                        <span class="n">done</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+                        <span class="n">num_retries</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gave up waiting for </span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2"> to become ready. Final Status was </span><span class="si">{</span><span class="n">final_status</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">final_status</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.request_tiles">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.request_tiles">[docs]</a>
+    <span class="k">def</span> <span class="nf">request_tiles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">num_tiles</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Requests tiles for the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to request tiles for</span>
+<span class="sd">        :param num_tiles: number of tiles to request</span>
+<span class="sd">        :param batch_size: number of tiles to request in parallel</span>
+<span class="sd">        :return: None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tile_format</span> <span class="o">=</span> <span class="s2">&quot;PNG&quot;</span>
+        <span class="n">compression</span> <span class="o">=</span> <span class="s2">&quot;NONE&quot;</span>
+
+        <span class="k">def</span> <span class="nf">concurrent_tile_request</span><span class="p">(</span><span class="n">tile</span><span class="p">:</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">/tiles/</span><span class="si">{</span><span class="n">tile</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">tile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">tile</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">tile_format</span><span class="si">}</span><span class="s2">?compression=</span><span class="si">{</span><span class="n">compression</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;GetTile&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+                    <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="s2">&quot;GetTile response contained no content&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">z</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]:</span>
+            <span class="n">num_tiles_at_zoom</span> <span class="o">=</span> <span class="n">ceil</span><span class="p">(</span><span class="n">num_tiles</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span><span class="o">**</span><span class="n">z</span><span class="p">))</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">ceil</span><span class="p">(</span><span class="n">log</span><span class="p">(</span><span class="n">num_tiles_at_zoom</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">log</span><span class="p">(</span><span class="mi">2</span><span class="p">)))</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="mi">2</span>
+            <span class="n">hilbert_curve</span> <span class="o">=</span> <span class="n">HilbertCurve</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">num_tiles_at_zoom</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">):</span>
+                <span class="n">distances</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">num_tiles_at_zoom</span><span class="p">)))</span>
+                <span class="n">tiles</span> <span class="o">=</span> <span class="p">[(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">z</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">hilbert_curve</span><span class="o">.</span><span class="n">points_from_distances</span><span class="p">(</span><span class="n">distances</span><span class="p">)]</span>
+                <span class="n">pool</span> <span class="o">=</span> <span class="n">gevent</span><span class="o">.</span><span class="n">pool</span><span class="o">.</span><span class="n">Pool</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">tile</span> <span class="ow">in</span> <span class="n">tiles</span><span class="p">:</span>
+                    <span class="n">pool</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">concurrent_tile_request</span><span class="p">,</span> <span class="n">tile</span><span class="p">)</span>
+                <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.cleanup_viewpoint">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.cleanup_viewpoint">[docs]</a>
+    <span class="k">def</span> <span class="nf">cleanup_viewpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deletes the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to delete</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;DELETE&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;DeleteViewpoint&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">VIEWPOINT_STATUS</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                    <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">VIEWPOINT_STATUS</span><span class="si">}</span><span class="s2">&#39; missing from response </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="n">VIEWPOINT_STATUS</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;DELETED&quot;</span><span class="p">:</span>
+                    <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected status after viewpoint delete </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.list_ready_viewpoints">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.list_ready_viewpoints">[docs]</a>
+    <span class="k">def</span> <span class="nf">list_ready_viewpoints</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Lists all ready viewpoints.</span>
+
+<span class="sd">        :return: list of viewpoint IDs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;/viewpoints&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ListViewpoints&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">viewpoint</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="s2">&quot;items&quot;</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="n">VIEWPOINT_ID</span> <span class="ow">in</span> <span class="n">viewpoint</span>
+                        <span class="ow">and</span> <span class="n">VIEWPOINT_STATUS</span> <span class="ow">in</span> <span class="n">viewpoint</span>
+                        <span class="ow">and</span> <span class="n">viewpoint</span><span class="p">[</span><span class="n">VIEWPOINT_STATUS</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;READY&quot;</span>
+                    <span class="p">):</span>
+                        <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">viewpoint</span><span class="p">[</span><span class="n">VIEWPOINT_ID</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.get_viewpoint_metadata">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.get_viewpoint_metadata">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_viewpoint_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches metadata for the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to fetch metadata for</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">/metadata&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;GetMetadata&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span> <span class="ow">and</span> <span class="s2">&quot;already been deleted&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]:</span>
+                <span class="c1"># It is possible the viewpoint was deleted between the call to list and this call. A 404 response may</span>
+                <span class="c1"># be valid.</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;metadata&#39; missing from response </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.get_viewpoint_bounds">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.get_viewpoint_bounds">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_viewpoint_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches bounds for the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to fetch bounds for</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">/bounds&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;GetBounds&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span> <span class="ow">and</span> <span class="s2">&quot;already been deleted&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]:</span>
+                <span class="c1"># It is possible the viewpoint was deleted between the call to list and this call. A 404 response may</span>
+                <span class="c1"># be valid.</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;bounds&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;bounds&#39; missing from response </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.get_viewpoint_info">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.get_viewpoint_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_viewpoint_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches info for the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to fetch info for</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">/info&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;GetInfo&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span> <span class="ow">and</span> <span class="s2">&quot;already been deleted&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]:</span>
+                <span class="c1"># It is possible the viewpoint was deleted between the call to list and this call. A 404 response may</span>
+                <span class="c1"># be valid.</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;features&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;features&#39; missing from response </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.get_viewpoint_statistics">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.get_viewpoint_statistics">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_viewpoint_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches statistics for the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to fetch statistics for</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">rest</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">/statistics&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;GetStatistics&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span> <span class="ow">and</span> <span class="s2">&quot;already been deleted&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]:</span>
+                <span class="c1"># It is possible the viewpoint was deleted between the call to list and this call. A 404 response may</span>
+                <span class="c1"># be valid.</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="s2">&quot;image_statistics&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;image_statistics&#39; missing from response </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TileServerUser.get_viewpoint_preview">
+<a class="viewcode-back" href="../../../../_apidoc/aws.osml.load.locust_ts_user.html#aws.osml.load.locust_ts_user.TileServerUser.get_viewpoint_preview">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_viewpoint_preview</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">viewpoint_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches preview for the viewpoint with specified ID.</span>
+
+<span class="sd">        :param viewpoint_id: ID of the viewpoint to fetch preview for</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tile_format</span> <span class="o">=</span> <span class="s2">&quot;PNG&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/viewpoints/</span><span class="si">{</span><span class="n">viewpoint_id</span><span class="si">}</span><span class="s2">/preview.</span><span class="si">{</span><span class="n">tile_format</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;GetPreview&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">404</span> <span class="ow">and</span> <span class="s2">&quot;already been deleted&quot;</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">js</span><span class="p">[</span><span class="s2">&quot;detail&quot;</span><span class="p">]:</span>
+                <span class="c1"># It is possible the viewpoint was deleted between the call to list and this call. A 404 response may</span>
+                <span class="c1"># be valid.</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">:</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="s2">&quot;GetPreview response contained no content&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Amazon.com.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>  
+
+<style>
+    .wy-nav-content { max-width: none; }
+</style>
+
+
+
+</body>
+</html>

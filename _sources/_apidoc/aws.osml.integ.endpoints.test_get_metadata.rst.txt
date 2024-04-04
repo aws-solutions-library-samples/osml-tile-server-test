@@ -1,0 +1,7 @@
+aws.osml.integ.endpoints.test\_get\_metadata module
+===================================================
+
+.. automodule:: aws.osml.integ.endpoints.test_get_metadata
+   :members:
+   :undoc-members:
+   :show-inheritance:

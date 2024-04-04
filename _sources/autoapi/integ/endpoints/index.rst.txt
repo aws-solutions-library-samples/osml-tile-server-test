@@ -1,0 +1,326 @@
+:py:mod:`integ.endpoints`
+=========================
+
+.. py:module:: integ.endpoints
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   test_create_viewpoint/index.rst
+   test_delete_viewpoint/index.rst
+   test_describe_viewpoint/index.rst
+   test_get_bounds/index.rst
+   test_get_crop/index.rst
+   test_get_info/index.rst
+   test_get_metadata/index.rst
+   test_get_preview/index.rst
+   test_get_statistics/index.rst
+   test_get_tile/index.rst
+   test_list_viewpoints/index.rst
+   test_update_viewpoint/index.rst
+
+
+Package Contents
+----------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   integ.endpoints.create_viewpoint
+   integ.endpoints.create_viewpoint_invalid
+   integ.endpoints.delete_viewpoint
+   integ.endpoints.delete_viewpoint_invalid
+   integ.endpoints.describe_viewpoint
+   integ.endpoints.describe_viewpoint_invalid
+   integ.endpoints.get_bounds
+   integ.endpoints.get_bounds_invalid
+   integ.endpoints.get_crop
+   integ.endpoints.get_crop_invalid
+   integ.endpoints.get_info
+   integ.endpoints.get_info_invalid
+   integ.endpoints.get_metadata
+   integ.endpoints.get_metadata_invalid
+   integ.endpoints.get_preview
+   integ.endpoints.get_preview_invalid
+   integ.endpoints.get_statistics
+   integ.endpoints.get_statistics_invalid
+   integ.endpoints.get_tile
+   integ.endpoints.get_tile_invalid
+   integ.endpoints.list_viewpoints
+   integ.endpoints.update_viewpoint
+   integ.endpoints.update_viewpoint_invalid_deleted
+   integ.endpoints.update_viewpoint_invalid_missing_field
+
+
+
+.. py:function:: create_viewpoint(session: requests.Session, url: str, test_body_data: Dict[str, Any]) -> str
+
+   Test Case: Successfully create a viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param test_body_data: Test body data to pass through POST http method.
+
+   return str: Viewpoint_id or the created viewpoint
+
+
+.. py:function:: create_viewpoint_invalid(session: requests.Session, url: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Failed to create a viewpoint
+
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+
+.. py:function:: delete_viewpoint(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully delete the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: delete_viewpoint_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to delete the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: describe_viewpoint(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully describe a viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: describe_viewpoint_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to describe a viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_bounds(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the bounds of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_bounds_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the bounds of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_crop(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the crop of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_crop_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the crop of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_info(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the info of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_info_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the info of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return : None
+
+
+.. py:function:: get_metadata(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the metadata of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_metadata_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the metadata of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_preview(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the preview of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_preview_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the preview of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_statistics(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the statistics of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_statistics_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the statistics of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_tile(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Successfully get the tile of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: get_tile_invalid(session: requests.Session, url: str, viewpoint_id: str) -> None
+
+   Test Case: Failed to get the tile of the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+
+   return: None
+
+
+.. py:function:: list_viewpoints(session: requests.Session, url: str) -> None
+
+   Test Case: Successfully get the list of the viewpoints
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+
+   return: None
+
+
+.. py:function:: update_viewpoint(session: requests.Session, url: str, viewpoint_id: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Successfully update the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+
+.. py:function:: update_viewpoint_invalid_deleted(session: requests.Session, url: str, viewpoint_id: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Failed to update the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+
+.. py:function:: update_viewpoint_invalid_missing_field(session: requests.Session, url: str, viewpoint_id: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Failed to update the viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param viewpoint_id: Unique viewpoint id to get from the table.
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+

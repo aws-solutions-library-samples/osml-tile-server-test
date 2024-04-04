@@ -1,0 +1,193 @@
+:py:mod:`load.locust_ts_user`
+=============================
+
+.. py:module:: load.locust_ts_user
+
+
+Module Contents
+---------------
+
+Classes
+~~~~~~~
+
+.. autoapisummary::
+
+   load.locust_ts_user.TileServerUser
+
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   load.locust_ts_user._
+   load.locust_ts_user._
+
+
+
+Attributes
+~~~~~~~~~~
+
+.. autoapisummary::
+
+   load.locust_ts_user.VIEWPOINT_STATUS
+   load.locust_ts_user.VIEWPOINT_ID
+
+
+.. py:data:: VIEWPOINT_STATUS
+   :value: 'viewpoint_status'
+
+   
+
+.. py:data:: VIEWPOINT_ID
+   :value: 'viewpoint_id'
+
+   
+
+.. py:function:: _(parser)
+
+
+.. py:function:: _(environment, **kwargs)
+
+   This method prints the test images bucket and object prefix from the given environment.
+
+   :param environment: The environment object containing parsed options.
+   :param kwargs: Additional keyword arguments (unused).
+   :return: None
+
+
+.. py:class:: TileServerUser(*args, **kwargs)
+
+
+   Bases: :py:obj:`locust.FastHttpUser`
+
+   :class:`TileServerUser` is a class representing a user that interacts with a tile server. It inherits from
+   `FastHttpUser` class provided by the `locust` library. The class provides methods for simulating user behavior on
+   the tile server, such as creating, retrieving, and discarding viewpoints, as well as querying metadata, bounds,
+   info, and statistics of existing viewpoints.
+
+   Examples:
+       Creating an instance of :class:`TileServerUser` and running a load test with Locust:
+
+       .. code-block:: python
+
+           from locust import User, TaskSet, constant, HttpUser, between
+           from tile.server.user import TileServerUser
+
+           class MyUser(HttpUser):
+               tasks = [TileServerUser]
+               wait_time = between(1, 2)
+
+   To run the locust file:
+   $res locust -f filename.py with python 3.8.5 and above; for old versions of python we may use locustio instead of locust
+   :class:`TileServerUser` provides the following instance variables:
+       - `test_images_bucket`: The S3 bucket name for test images.
+       - `test_images_prefix`: The prefix for filtering test images within the S3 bucket.
+       - `test_image_keys`: The list of test image keys in the S3 bucket.
+       - `wait_time`: The time interval (in seconds) between each task execution.
+
+
+   .. py:attribute:: wait_time
+
+      
+
+   .. py:attribute:: max_retries
+      :value: 3
+
+      
+
+   .. py:method:: on_start() -> None
+
+      Locust invokes this method when the user is created. It checks if test images were provided.
+
+
+   .. py:method:: view_new_image_behavior() -> None
+
+      This task simulates a user creating, retrieving tiles from, and then discarding a viewpoint.
+
+
+   .. py:method:: discover_viewpoints_behavior() -> None
+
+      This task simulates a user accessing a web page that displays an active list of viewpoints. The main query
+      API is invoked then details including the image preview, metadata, and detailed statistics are called
+      for each image.
+
+
+   .. py:method:: create_viewpoint(test_images_bucket: str, test_image_key: str) -> Optional[str]
+
+      Creates a viewpoint with specified parameters.
+
+      :param test_images_bucket: bucket containing test images
+      :param test_image_key: key of the test image
+      :return: ID of the created viewpoint or None
+
+
+   .. py:method:: wait_for_viewpoint_ready(viewpoint_id: str) -> str
+
+      Waits for the viewpoint with specified ID to become ready.
+
+      :param viewpoint_id: ID of the viewpoint to wait for
+      :return: final status of the viewpoint
+
+
+   .. py:method:: request_tiles(viewpoint_id: str, num_tiles: int = 100, batch_size: int = 5) -> None
+
+      Requests tiles for the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to request tiles for
+      :param num_tiles: number of tiles to request
+      :param batch_size: number of tiles to request in parallel
+      :return: None
+
+
+   .. py:method:: cleanup_viewpoint(viewpoint_id: str) -> None
+
+      Deletes the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to delete
+
+
+   .. py:method:: list_ready_viewpoints() -> List[str]
+
+      Lists all ready viewpoints.
+
+      :return: list of viewpoint IDs
+
+
+   .. py:method:: get_viewpoint_metadata(viewpoint_id: str)
+
+      Fetches metadata for the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to fetch metadata for
+
+
+   .. py:method:: get_viewpoint_bounds(viewpoint_id: str)
+
+      Fetches bounds for the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to fetch bounds for
+
+
+   .. py:method:: get_viewpoint_info(viewpoint_id: str)
+
+      Fetches info for the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to fetch info for
+
+
+   .. py:method:: get_viewpoint_statistics(viewpoint_id: str)
+
+      Fetches statistics for the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to fetch statistics for
+
+
+   .. py:method:: get_viewpoint_preview(viewpoint_id: str)
+
+      Fetches preview for the viewpoint with specified ID.
+
+      :param viewpoint_id: ID of the viewpoint to fetch preview for
+
+
+

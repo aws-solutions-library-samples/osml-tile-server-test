@@ -1,0 +1,7 @@
+aws.osml.load.locust\_ts\_user module
+=====================================
+
+.. automodule:: aws.osml.load.locust_ts_user
+   :members:
+   :undoc-members:
+   :show-inheritance:

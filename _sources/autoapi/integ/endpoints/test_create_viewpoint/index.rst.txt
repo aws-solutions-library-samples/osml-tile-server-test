@@ -1,0 +1,40 @@
+:py:mod:`integ.endpoints.test_create_viewpoint`
+===============================================
+
+.. py:module:: integ.endpoints.test_create_viewpoint
+
+
+Module Contents
+---------------
+
+
+Functions
+~~~~~~~~~
+
+.. autoapisummary::
+
+   integ.endpoints.test_create_viewpoint.create_viewpoint
+   integ.endpoints.test_create_viewpoint.create_viewpoint_invalid
+
+
+
+.. py:function:: create_viewpoint(session: requests.Session, url: str, test_body_data: Dict[str, Any]) -> str
+
+   Test Case: Successfully create a viewpoint
+
+   :param session: Requests session to use to send the request.
+   :param url: URL to send the request to.
+   :param test_body_data: Test body data to pass through POST http method.
+
+   return str: Viewpoint_id or the created viewpoint
+
+
+.. py:function:: create_viewpoint_invalid(session: requests.Session, url: str, test_body_data: Dict[str, Any]) -> None
+
+   Test Case: Failed to create a viewpoint
+
+   :param test_body_data: Test body data to pass through POST http method
+
+   return: None
+
+

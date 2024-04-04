@@ -1,0 +1,15 @@
+aws.osml.integ 
+===============
+
+.. automodule:: aws.osml.integ
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   aws.osml.integ.endpoints
