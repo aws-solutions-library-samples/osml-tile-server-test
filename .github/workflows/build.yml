@@ -1,13 +1,13 @@
-name: "OSML Tile Server Test Build Workflow"
+name: build
 
 on:
   pull_request:
     branches: ["main"]
 
 jobs:
-  Build_Validate_Tox:
-    uses: ./.github/workflows/python-tox.yml
+  tox:
+    uses: ./.github/workflows/tox.yml
     secrets: inherit
-  Build_Docker_Container:
+  docker-build:
     uses: ./.github/workflows/docker-build.yml
     secrets: inherit
