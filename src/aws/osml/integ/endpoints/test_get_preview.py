@@ -13,7 +13,7 @@ def get_preview(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/preview.JPEG")
+    res = session.get(f"{url}/{viewpoint_id}/image/preview.JPEG")
     res.raise_for_status()
 
     assert res.status_code == 200
@@ -30,7 +30,7 @@ def get_preview_invalid(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/preview.JPEG")
+    res = session.get(f"{url}/{viewpoint_id}/image/preview.JPEG")
 
     response_data = res.json()
 

@@ -45,6 +45,7 @@ def set_load_test_env(args: Dict) -> None:
     # custom Locus params
     os.environ["LOCUST_TEST_IMAGES_BUCKET"] = args.get("source_image_bucket", "")
     os.environ["LOCUST_TEST_IMAGE_KEYS"] = json.dumps(args.get("locust_image_keys", []))
+    logging.info(f"Setup Locust Test Environment: {os.environ}")
 
 
 def lambda_get_next(lambda_runtime_api: str, function_name: str) -> Tuple[Dict, Dict]:

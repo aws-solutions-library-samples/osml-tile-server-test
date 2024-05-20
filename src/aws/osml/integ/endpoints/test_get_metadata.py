@@ -13,7 +13,7 @@ def get_metadata(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/metadata")
+    res = session.get(f"{url}/{viewpoint_id}/image/metadata")
     res.raise_for_status()
 
     response_data = res.json()
@@ -32,7 +32,7 @@ def get_metadata_invalid(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session("GET", f"{url}/{viewpoint_id}/metadata")
+    res = session("GET", f"{url}/{viewpoint_id}/image/metadata")
 
     response_data = res.json()
 

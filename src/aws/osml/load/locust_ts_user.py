@@ -1,6 +1,7 @@
 #  Copyright 2024 Amazon.com, Inc. or its affiliates.
 
 import json
+import logging
 import os
 import random
 import time
@@ -20,20 +21,20 @@ VIEWPOINT_ID = "viewpoint_id"
 @events.init_command_line_parser.add_listener
 def _(parser):
     parser.add_argument("--test_images_bucket", type=str, default=os.environ.get("LOCUST_TEST_IMAGES_BUCKET"))
-    parser.add_argument("--test_image_keys", type=str, default=json.loads(os.environ.get("LOCUST_TEST_IMAGE_KEYS", "[]")))
+    parser.add_argument("--test_image_keys", type=str, default=os.environ.get("LOCUST_TEST_IMAGE_KEYS", "[]"))
 
 
 @events.test_start.add_listener
 def _(environment, **kwargs):
     """
-    This method prints the test images bucket and object prefix from the given environment.
+    This method logs the test images bucket and object prefix from the given environment.
 
     :param environment: The environment object containing parsed options.
     :param kwargs: Additional keyword arguments (unused).
     :return: None
     """
-    print(f"Using bucket: {environment.parsed_options.test_images_bucket}")
-    print(f"Using images: {environment.parsed_options.test_image_keys}")
+    logging.info(f"Using bucket: {environment.parsed_options.test_images_bucket}")
+    logging.info(f"Using images: {environment.parsed_options.test_image_keys}")
 
 
 class TileServerUser(FastHttpUser):
@@ -75,7 +76,8 @@ class TileServerUser(FastHttpUser):
         if isinstance(self.environment.parsed_options.test_image_keys, list):
             self.test_image_keys = self.environment.parsed_options.test_image_keys
         else:
-            self.test_image_keys = [self.environment.parsed_options.test_image_keys]
+            self.test_image_keys = json.loads(self.environment.parsed_options.test_image_keys)
+        logging.info(f"TileServerUser Initialization Parameters: {self.test_images_bucket} {self.test_image_keys}")
 
     def on_start(self) -> None:
         """
@@ -84,14 +86,32 @@ class TileServerUser(FastHttpUser):
         if not self.test_image_keys:
             raise ValueError("No test imagery specified by --locust_image_keys")
         else:
-            print(f"Using {len(self.test_image_keys)} test images")
+            logging.info(f"Using {len(self.test_image_keys)} test images")
+
+    @task(5)
+    def view_new_map_behavior(self) -> None:
+        logging.debug("View New Map Behavior!")
+        viewpoint_id = self.create_viewpoint(self.test_images_bucket, random.choice(self.test_image_keys), 256, "DRA")
+        if viewpoint_id is not None:
+            final_status = self.wait_for_viewpoint_ready(viewpoint_id)
+            if final_status == "READY":
+                self.request_map_tiles(viewpoint_id)
+
+            if final_status in ["READY", "FAILED"]:
+                self.cleanup_viewpoint(viewpoint_id)
 
     @task(5)
     def view_new_image_behavior(self) -> None:
         """
         This task simulates a user creating, retrieving tiles from, and then discarding a viewpoint.
         """
-        viewpoint_id = self.create_viewpoint(self.test_images_bucket, random.choice(self.test_image_keys))
+        logging.debug("View New Image Behavior!")
+        viewpoint_id = self.create_viewpoint(
+            self.test_images_bucket,
+            random.choice(self.test_image_keys),
+            random.choice([256, 512]),
+            random.choice(["NONE", "DRA", "MINMAX"]),
+        )
         if viewpoint_id is not None:
             final_status = self.wait_for_viewpoint_ready(viewpoint_id)
             if final_status == "READY":
@@ -100,7 +120,7 @@ class TileServerUser(FastHttpUser):
             if final_status in ["READY", "FAILED"]:
                 self.cleanup_viewpoint(viewpoint_id)
 
-    @task(1)
+    @task(2)
     def discover_viewpoints_behavior(self) -> None:
         """
         This task simulates a user accessing a web page that displays an active list of viewpoints. The main query
@@ -108,6 +128,7 @@ class TileServerUser(FastHttpUser):
         for each image.
         """
 
+        logging.debug("Discover Viewpoints Behavior")
         # TODO: Update this to work on a per-page basis once the list viewpoints operation is paginated
         viewpoint_ids = self.list_ready_viewpoints()
 
@@ -123,7 +144,9 @@ class TileServerUser(FastHttpUser):
             pool.spawn(get_viewpoint_details, viewpoint_id)
         pool.join()
 
-    def create_viewpoint(self, test_images_bucket: str, test_image_key: str) -> Optional[str]:
+    def create_viewpoint(
+        self, test_images_bucket: str, test_image_key: str, tile_size: int = 256, range_adjustment: str = "DRA"
+    ) -> Optional[str]:
         """
         Creates a viewpoint with specified parameters.
 
@@ -139,8 +162,8 @@ class TileServerUser(FastHttpUser):
                 "viewpoint_name": "LocustUser-Viewpoint-" + token_hex(16),
                 "bucket_name": test_images_bucket,
                 "object_key": test_image_key,
-                "tile_size": random.choice([256, 512]),
-                "range_adjustment": random.choice(["NONE", "DRA", "MINMAX"]),
+                "tile_size": tile_size,
+                "range_adjustment": range_adjustment,
             },
         ) as response:
             if response.js is not None:
@@ -187,7 +210,10 @@ class TileServerUser(FastHttpUser):
         compression = "NONE"
 
         def concurrent_tile_request(tile: (int, int, int)):
-            url = f"/viewpoints/{viewpoint_id}/tiles/{tile[2]}/{tile[0]}/{tile[1]}.{tile_format}?compression={compression}"
+            url = (
+                f"/viewpoints/{viewpoint_id}/image/tiles/"
+                f"{tile[2]}/{tile[0]}/{tile[1]}.{tile_format}?compression={compression}"
+            )
             with self.client.get(url, name="GetTile") as response:
                 if not response.content:
                     response.failure("GetTile response contained no content")
@@ -204,6 +230,53 @@ class TileServerUser(FastHttpUser):
                 for tile in tiles:
                     pool.spawn(concurrent_tile_request, tile)
                 pool.join()
+
+    def request_map_tiles(
+        self, viewpoint_id: str, tile_matrix_set_id: str = "WebMercatorQuad", num_tiles: int = 100
+    ) -> None:
+        self.get_viewpoint_tilesets(viewpoint_id)
+
+        tile_format = "PNG"
+        compression = "NONE"
+
+        parsed_tileset_limits = {}
+        max_zoom_level = 0
+        tileset_metadata = self.get_viewpoint_tileset_metadata(viewpoint_id, tile_matrix_set_id)
+        for tile_matrix_limits in tileset_metadata["tileMatrixSetLimits"]:
+            current_tile_matrix = int(tile_matrix_limits["tileMatrix"])
+            max_zoom_level = max(max_zoom_level, current_tile_matrix)
+            parsed_tileset_limits[current_tile_matrix] = (
+                tile_matrix_limits["minTileRow"],
+                tile_matrix_limits["minTileCol"],
+                tile_matrix_limits["maxTileRow"],
+                tile_matrix_limits["maxTileCol"],
+            )
+
+        def concurrent_tile_request(tile: (int, int, int)):
+            url = (
+                f"/viewpoints/{viewpoint_id}/map/tiles/"
+                f"WebMercatorQuad/{tile[2]}/{tile[1]}/{tile[0]}.{tile_format}?compression={compression}"
+            )
+            with self.client.get(url, name="GetMapTile") as response:
+                if not response.content:
+                    response.failure("GetMapTile response contained no content")
+
+        num_tiles_fetched = 0
+        for zoom in range(0, max_zoom_level + 1):
+            if zoom not in parsed_tileset_limits:
+                # Skipping this zoom level because the tile limits haven't been specified
+                continue
+
+            min_ty, min_tx, max_ty, max_tx = parsed_tileset_limits[zoom]
+
+            pool = gevent.pool.Pool()
+            for ty in range(min_ty, max_ty + 1):
+                for tx in range(min_tx, max_tx + 1):
+                    if num_tiles_fetched >= num_tiles:
+                        break
+                    pool.spawn(concurrent_tile_request((tx, ty, zoom)))
+                    num_tiles_fetched += 1
+            pool.join()
 
     def cleanup_viewpoint(self, viewpoint_id: str) -> None:
         """
@@ -242,7 +315,7 @@ class TileServerUser(FastHttpUser):
 
         :param viewpoint_id: ID of the viewpoint to fetch metadata for
         """
-        with self.rest("GET", f"/viewpoints/{viewpoint_id}/metadata", name="GetMetadata") as response:
+        with self.rest("GET", f"/viewpoints/{viewpoint_id}/image/metadata", name="GetMetadata") as response:
             if response.status_code == 404 and "already been deleted" in response.js["detail"]:
                 # It is possible the viewpoint was deleted between the call to list and this call. A 404 response may
                 # be valid.
@@ -256,7 +329,7 @@ class TileServerUser(FastHttpUser):
 
         :param viewpoint_id: ID of the viewpoint to fetch bounds for
         """
-        with self.rest("GET", f"/viewpoints/{viewpoint_id}/bounds", name="GetBounds") as response:
+        with self.rest("GET", f"/viewpoints/{viewpoint_id}/image/bounds", name="GetBounds") as response:
             if response.status_code == 404 and "already been deleted" in response.js["detail"]:
                 # It is possible the viewpoint was deleted between the call to list and this call. A 404 response may
                 # be valid.
@@ -264,19 +337,22 @@ class TileServerUser(FastHttpUser):
             elif response.js is not None and "bounds" not in response.js:
                 response.failure(f"'bounds' missing from response {response.text}")
 
-    def get_viewpoint_info(self, viewpoint_id: str):
+    def get_viewpoint_info(self, viewpoint_id: str) -> Optional[dict]:
         """
         Fetches info for the viewpoint with specified ID.
 
         :param viewpoint_id: ID of the viewpoint to fetch info for
         """
-        with self.rest("GET", f"/viewpoints/{viewpoint_id}/info", name="GetInfo") as response:
+        with self.rest("GET", f"/viewpoints/{viewpoint_id}/image/info", name="GetInfo") as response:
             if response.status_code == 404 and "already been deleted" in response.js["detail"]:
                 # It is possible the viewpoint was deleted between the call to list and this call. A 404 response may
                 # be valid.
                 response.success()
+                return None
             elif response.js is not None and "features" not in response.js:
                 response.failure(f"'features' missing from response {response.text}")
+            else:
+                return response.js
 
     def get_viewpoint_statistics(self, viewpoint_id: str):
         """
@@ -284,7 +360,7 @@ class TileServerUser(FastHttpUser):
 
         :param viewpoint_id: ID of the viewpoint to fetch statistics for
         """
-        with self.rest("GET", f"/viewpoints/{viewpoint_id}/statistics", name="GetStatistics") as response:
+        with self.rest("GET", f"/viewpoints/{viewpoint_id}/image/statistics", name="GetStatistics") as response:
             if response.status_code == 404 and "already been deleted" in response.js["detail"]:
                 # It is possible the viewpoint was deleted between the call to list and this call. A 404 response may
                 # be valid.
@@ -299,10 +375,30 @@ class TileServerUser(FastHttpUser):
         :param viewpoint_id: ID of the viewpoint to fetch preview for
         """
         tile_format = "PNG"
-        with self.client.get(f"/viewpoints/{viewpoint_id}/preview.{tile_format}", name="GetPreview") as response:
+        with self.client.get(f"/viewpoints/{viewpoint_id}/image/preview.{tile_format}", name="GetPreview") as response:
             if response.status_code == 404 and "already been deleted" in response.js["detail"]:
                 # It is possible the viewpoint was deleted between the call to list and this call. A 404 response may
                 # be valid.
                 response.success()
             elif not response.content:
                 response.failure("GetPreview response contained no content")
+
+    def get_viewpoint_tilesets(self, viewpoint_id: str):
+        with self.rest("GET", f"/viewpoints/{viewpoint_id}/map/tiles", name="GetMapTilesets") as response:
+            if response.status_code == 404 and "already been deleted" in response.js["detail"]:
+                # It is possible the viewpoint was deleted between the call to list and this call. A 404 response may
+                # be valid.
+                response.success()
+            elif not response.content:
+                response.failure("GetMapTilesets response contained no content")
+
+    def get_viewpoint_tileset_metadata(self, viewpoint_id: str, tile_matrix_set_id: str) -> Optional[dict]:
+        with self.rest(
+            "GET", f"/viewpoints/{viewpoint_id}/map/tiles/{tile_matrix_set_id}", name="GetMapTilesetMetadata"
+        ) as response:
+            if response.js is not None:
+                response.success()
+                return response.js
+            else:
+                response.failure("GetMapTileseetMetadata response contained no content")
+                return None

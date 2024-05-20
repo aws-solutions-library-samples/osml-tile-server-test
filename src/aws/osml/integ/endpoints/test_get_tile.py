@@ -13,7 +13,7 @@ def get_tile(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/tiles/10/10/10.PNG")
+    res = session.get(f"{url}/{viewpoint_id}/image/tiles/10/10/10.PNG")
     res.raise_for_status()
 
     assert res.status_code == 200
@@ -30,7 +30,7 @@ def get_tile_invalid(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/tiles/10/10/10.PNG")
+    res = session.get(f"{url}/{viewpoint_id}/image/tiles/10/10/10.PNG")
 
     response_data = res.json()
 
