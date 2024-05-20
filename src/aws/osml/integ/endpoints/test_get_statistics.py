@@ -13,7 +13,7 @@ def get_statistics(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/statistics")
+    res = session.get(f"{url}/{viewpoint_id}/image/statistics")
     res.raise_for_status()
 
     response_data = res.json()
@@ -35,7 +35,7 @@ def get_statistics_invalid(session: Session, url: str, viewpoint_id: str) -> Non
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/statistics")
+    res = session.get(f"{url}/{viewpoint_id}/image/statistics")
 
     response_data = res.json()
 

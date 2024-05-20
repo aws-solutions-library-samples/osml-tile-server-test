@@ -13,7 +13,7 @@ def get_info(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/info")
+    res = session.get(f"{url}/{viewpoint_id}/image/info")
     res.raise_for_status()
 
     assert res.status_code == 200
@@ -29,7 +29,7 @@ def get_info_invalid(session: Session, url: str, viewpoint_id: str) -> None:
 
     return : None
     """
-    res = session.get(f"{url}/{viewpoint_id}/info")
+    res = session.get(f"{url}/{viewpoint_id}/image/info")
 
     response_data = res.json()
 

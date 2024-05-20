@@ -13,7 +13,7 @@ def get_bounds(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/bounds")
+    res = session.get(f"{url}/{viewpoint_id}/image/bounds")
     res.raise_for_status()
 
     response_data = res.json()
@@ -32,7 +32,7 @@ def get_bounds_invalid(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/bounds")
+    res = session.get(f"{url}/{viewpoint_id}/image/bounds")
 
     response_data = res.json()
 

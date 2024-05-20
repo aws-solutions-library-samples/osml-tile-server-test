@@ -13,7 +13,7 @@ def get_crop(session: Session, url: str, viewpoint_id: str) -> None:
 
     return: None
     """
-    res = session.get(f"{url}/{viewpoint_id}/crop/32,32,64,64.PNG")
+    res = session.get(f"{url}/{viewpoint_id}/image/crop/32,32,64,64.PNG")
     res.raise_for_status()
 
     assert res.status_code == 200
@@ -31,7 +31,7 @@ def get_crop_invalid(session: Session, url: str, viewpoint_id: str) -> None:
     return: None
     """
 
-    res = session.get(f"{url}/{viewpoint_id}/crop/32,32,64,64.PNG")
+    res = session.get(f"{url}/{viewpoint_id}/image/crop/32,32,64,64.PNG")
 
     response_data = res.json()
 

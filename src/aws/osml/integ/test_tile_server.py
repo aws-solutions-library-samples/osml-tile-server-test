@@ -18,6 +18,9 @@ from .endpoints import (
     get_bounds,
     get_crop,
     get_info,
+    get_map_tile,
+    get_map_tileset_metadata,
+    get_map_tilesets,
     get_metadata,
     get_preview,
     get_statistics,
@@ -82,6 +85,9 @@ class TestTileServer:
         self.test_get_preview()
         self.test_get_tile()
         self.test_get_crop()
+        self.test_get_map_tilesets()
+        self.test_get_map_tileset_metadata()
+        self.test_get_map_tile()
         self.test_delete_viewpoint()
         test_summary = self._pretty_print_test_results(self.test_results)
         if TestResult.FAILED in self.test_results.values():
@@ -223,6 +229,36 @@ class TestTileServer:
             logging.info(f"\tFailed. {err}")
             logging.error(traceback.print_exception(err))
             self.test_results["Get Crop"] = TestResult.FAILED
+
+    def test_get_map_tilesets(self) -> None:
+        try:
+            logging.info("Testing get map tilesets")
+            get_map_tilesets(self.session, self.viewpoints_url, self.viewpoint_id)
+            self.test_results["Get Map Tilesets"] = TestResult.PASSED
+        except Exception as err:
+            logging.info(f"\tFailed. {err}")
+            logging.error(traceback.print_exception(err))
+            self.test_results["Get Map Tilesets"] = TestResult.FAILED
+
+    def test_get_map_tileset_metadata(self) -> None:
+        try:
+            logging.info("Testing get map tileset metadata")
+            get_map_tileset_metadata(self.session, self.viewpoints_url, self.viewpoint_id, "WebMercatorQuad")
+            self.test_results["Get Map Tileset Metadata"] = TestResult.PASSED
+        except Exception as err:
+            logging.info(f"\tFailed. {err}")
+            logging.error(traceback.print_exception(err))
+            self.test_results["Get Map Tileset Metadata"] = TestResult.FAILED
+
+    def test_get_map_tile(self) -> None:
+        try:
+            logging.info("Testing get map tile")
+            get_map_tile(self.session, self.viewpoints_url, self.viewpoint_id)
+            self.test_results["Get Map Tile"] = TestResult.PASSED
+        except Exception as err:
+            logging.info(f"\tFailed. {err}")
+            logging.error(traceback.print_exception(err))
+            self.test_results["Get Map Tile"] = TestResult.FAILED
 
     def test_delete_viewpoint(self) -> None:
         try:
