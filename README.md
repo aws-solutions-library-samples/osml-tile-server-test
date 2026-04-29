@@ -1,5 +1,7 @@
 # OSML Tile Server Test
 
+> **⚠️ This repository has been archived and is no longer maintained.** Test resources for OversightML's Tile Server have been consolidated into the [awslabs/osml-tile-server](https://github.com/awslabs/osml-tile-server) repository. See the [`/test`](https://github.com/awslabs/osml-tile-server/tree/main/test) directory there for the current test infrastructure. This move was made to improve maintainability and keep test infrastructure up to date with the service code.
+
 This package contains the integration tests for OSML Tile Server application
 
 ### Table of Contents
